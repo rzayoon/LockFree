@@ -1,10 +1,30 @@
 #include <Windows.h>
 #include <conio.h>
 #include "LockFreeStack.h"
+#include "LockFreePool.h"
 
+struct TestNode
+{
+	__int64 front_padding;
+	__int64 data;
+	__int64 rear_padding;
 
+	TestNode()
+	{
+		char* f = (char*)this - sizeof(__int64);
+		char* r = (char*)this + sizeof(TestNode);
+		memcpy(&front_padding, f, sizeof(__int64));
+		memcpy(&rear_padding, r, sizeof(__int64));
+		data = 0;
+	}
 
-LockFreeStack<int> stack;
+	~TestNode()
+	{
+
+	}
+};
+
+LockFreePool<TestNode> testpool(4000);
 
 const int NUM_THREAD = 4;
 
@@ -43,18 +63,20 @@ DWORD WINAPI worker(LPVOID param)
 {
 	DWORD id = GetCurrentThreadId();
 
-	int item = 1;
-	int ret;
+
+	TestNode* arr[1000];
 
 	while (!close)
 	{
 		for (int i = 0; i < 1000; i++) {
-			stack.Push(item);
-			++item;
+			
+			arr[i] = testpool.Alloc();
 		}
 
+		Sleep(INFINITE);
+
 		for (int i = 0; i < 1000; i++) {
-			stack.Pop(&ret);
+			testpool.Free(arr[i]);
 		}
 	}
 

@@ -159,9 +159,12 @@
   <ItemGroup>
     <ClCompile Include="LockFreeStack.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Tracer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LockFreePool.h" />
     <ClInclude Include="LockFreeStack.h" />
+    <ClInclude Include="Tracer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,15 +1,7 @@
 #pragma once
 #include <Windows.h>
+#include "Tracer.h"
 
-
-struct DebugNode
-{
-	DWORD id;
-	unsigned int seq;
-	char msg[64];
-};
-
-void trace(const char* msg);
 
 
 template<class T>
@@ -80,20 +72,20 @@ template<class T>
 inline void LockFreeStack<T>::Push(T data)
 {
 	Node* temp = new Node;
+	trace(0, temp, NULL);
 	temp->data = data;
 	Node* top;
 
 	Node* ret;
 	while (1)
 	{
-		trace("push top = _top");
 		top = _top;
-		trace("push temp->nex = top");
+		trace(1, top, NULL);
 		temp->next = top;
+		trace(2, temp->next, top);
 
-		trace("push begin _top = top");
 		if (top == (ret = (Node*)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)temp, (PVOID)top))) {
-			trace("Push Complete _top = top");
+			trace(3, top, temp);
 			break;
 		}
 
@@ -106,28 +98,28 @@ inline void LockFreeStack<T>::Push(T data)
 template<class T>
 inline void LockFreeStack<T>::Pop(T* data)
 {
-
+	trace(20, NULL, NULL);
 	Node* top;
 	Node* next;
-
 	Node* ret;
+
 	while (1)
 	{
-		trace("pop top = _top");
 		top = _top;
+		trace(21, top, NULL);
 		if (top == nullptr)
 		{
 			int a = 0;
-		}
-		trace("pop next = top->next");
+		};
 		next = top->next;
-		trace("pop begin _top = next");
+		trace(22, next, NULL);
 
 		if (top == ( ret = (Node*)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)next, (PVOID)top) ))
 		{
-			trace("pop Complete _top = next");
+			trace(23, top, next);
 			*data = top->data;
-			//delete top;
+			delete top;
+			trace(24, top, NULL);
 			break;
 		}
 	}
