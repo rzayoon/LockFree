@@ -2,6 +2,8 @@
 #include <Windows.h>
 #include "Tracer.h"
 
+#define dfPAD -1
+
 template <class DATA>
 class LockFreePool
 {
@@ -9,13 +11,15 @@ class LockFreePool
 	{
 		__int64 pad1;
 		DATA data;
-		BLOCK_NODE* next;
 		__int64 pad2;
+		BLOCK_NODE* next;
+	
 
 		BLOCK_NODE()
 		{
-			pad1 = -1;
-			pad2 = -1;
+			pad1 = dfPAD;
+			next = nullptr;
+			pad2 = dfPAD;
 		}
 	};
 
@@ -126,21 +130,26 @@ DATA* LockFreePool<DATA>::Alloc()
 			trace(43, old_top, next);
 			break;
 		}
-
-
 	}
 	InterlockedIncrement((LONG*)&use_count);
-
-	return (DATA*)old_top;
+	
+	return (DATA*)&old_top->data;
 }
 
 template<class DATA>
 bool LockFreePool<DATA>::Free(DATA* data)
 {
 	BLOCK_NODE* old_top;
-	BLOCK_NODE* node = (BLOCK_NODE*)data;
+	BLOCK_NODE* node = (BLOCK_NODE*)((char*)data - sizeof(BLOCK_NODE::pad1));
+
+	if (node->pad1 != dfPAD || node->pad2 != dfPAD)
+	{
+		int a = 0;
+	}
 
 	trace(60, node, NULL);
+
+	
 
 	while (1)
 	{

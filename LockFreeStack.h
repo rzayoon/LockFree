@@ -1,5 +1,6 @@
 #pragma once
 #include <Windows.h>
+#include "LockFreePool.h"
 #include "Tracer.h"
 
 
@@ -21,7 +22,7 @@ class LockFreeStack
 			char* r = (char*)this + sizeof(Node);
 			memcpy(&front_padding, f, sizeof(__int64));
 			memcpy(&rear_padding, r, sizeof(__int64));
-			data = 0;
+
 			next = nullptr;
 			del_cnt = 0;
 		}
@@ -29,7 +30,6 @@ class LockFreeStack
 		~Node()
 		{
 
-			del_cnt--;
 		}
 	};
 
@@ -45,8 +45,7 @@ public:
 private:
 
 	alignas(64) Node* _top;
-	CRITICAL_SECTION cs;
-
+	LockFreePool<Node> *_pool;
 
 };
 
@@ -54,24 +53,20 @@ template<class T>
 inline LockFreeStack<T>::LockFreeStack()
 {
 	_top = nullptr;
-	InitializeCriticalSection(&cs);
+	_pool = new LockFreePool<Node>(10000);
 }
 
 template<class T>
 inline LockFreeStack<T>::~LockFreeStack()
 {
-	while (_top)
-	{
-		Node* temp = _top;
-		_top = _top->next;
-		delete temp;
-	}
+	delete _pool;
 }
 
 template<class T>
 inline void LockFreeStack<T>::Push(T data)
 {
-	Node* temp = new Node;
+	Node* temp = _pool->Alloc();
+	temp->del_cnt = 0;
 	trace(0, temp, NULL);
 	temp->data = data;
 	Node* top;
@@ -118,7 +113,10 @@ inline void LockFreeStack<T>::Pop(T* data)
 		{
 			trace(23, top, next);
 			*data = top->data;
-			delete top;
+			top->del_cnt--;
+			if (top->del_cnt == -2)
+				int a = 0;
+			_pool->Free(top);
 			trace(24, top, NULL);
 			break;
 		}
