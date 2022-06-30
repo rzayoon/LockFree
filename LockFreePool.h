@@ -12,14 +12,17 @@ class LockFreePool
 		__int64 pad1;
 		DATA data;
 		__int64 pad2;
+		alignas(64) LONG use;
 		BLOCK_NODE* next;
 	
 
 		BLOCK_NODE()
 		{
 			pad1 = dfPAD;
-			next = nullptr;
+
 			pad2 = dfPAD;
+			next = nullptr;
+			use = 0;
 		}
 	};
 
@@ -128,11 +131,16 @@ DATA* LockFreePool<DATA>::Alloc()
 		if (old_top == (BLOCK_NODE*)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)next, (PVOID)old_top))
 		{
 			trace(43, old_top, next);
+			old_top->use++;
+			if (old_top->use == 2)
+				int a = 0;
 			break;
 		}
 	}
 	InterlockedIncrement((LONG*)&use_count);
+
 	
+
 	return (DATA*)&old_top->data;
 }
 
@@ -146,6 +154,9 @@ bool LockFreePool<DATA>::Free(DATA* data)
 	{
 		int a = 0;
 	}
+	
+	node->use = 0;
+
 
 	trace(60, node, NULL);
 

@@ -67,7 +67,7 @@ inline void LockFreeStack<T>::Push(T data)
 {
 	Node* temp = _pool->Alloc();
 	temp->del_cnt = 0;
-	trace(0, temp, NULL);
+	//trace(0, temp, NULL);
 	temp->data = data;
 	Node* top;
 
@@ -75,12 +75,12 @@ inline void LockFreeStack<T>::Push(T data)
 	while (1)
 	{
 		top = _top;
-		trace(1, top, NULL);
+		//trace(1, top, NULL);
 		temp->next = top;
-		trace(2, temp->next, top);
+		//trace(2, NULL, top);
 
 		if (top == (ret = (Node*)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)temp, (PVOID)top))) {
-			trace(3, top, temp);
+			//trace(3, top, temp);
 			break;
 		}
 
@@ -88,12 +88,12 @@ inline void LockFreeStack<T>::Push(T data)
 
 	return;
 
-}
+} 
 
 template<class T>
 inline void LockFreeStack<T>::Pop(T* data)
 {
-	trace(20, NULL, NULL);
+	//trace(20, NULL, NULL);
 	Node* top;
 	Node* next;
 	Node* ret;
@@ -101,23 +101,23 @@ inline void LockFreeStack<T>::Pop(T* data)
 	while (1)
 	{
 		top = _top;
-		trace(21, top, NULL);
+		//trace(21, top, NULL);
 		if (top == nullptr)
 		{
 			int a = 0;
 		};
 		next = top->next;
-		trace(22, next, NULL);
+		//trace(22, next, NULL);
 
 		if (top == ( ret = (Node*)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)next, (PVOID)top) ))
 		{
-			trace(23, top, next);
+			//trace(23, top, next);
 			*data = top->data;
 			top->del_cnt--;
 			if (top->del_cnt == -2)
 				int a = 0;
 			_pool->Free(top);
-			trace(24, top, NULL);
+			//trace(24, top, NULL);
 			break;
 		}
 	}
