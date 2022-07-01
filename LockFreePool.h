@@ -1,8 +1,11 @@
 #pragma once
 #include <Windows.h>
+#include <stdio.h>
 #include "Tracer.h"
 
 #define dfPAD -1
+#define dfADDRESS_MASK 0x00007fffffffffff
+#define dfADDRESS_BIT 47
 
 template <class DATA>
 class LockFreePool
@@ -82,6 +85,14 @@ protected:
 template<class DATA>
 LockFreePool<DATA>::LockFreePool(int _capacity, bool _placement_new)
 {
+	SYSTEM_INFO si;
+	GetSystemInfo(&si);
+	if ((_int64)si.lpMaximumApplicationAddress != 0x00007ffffffeffff)
+	{
+		printf("Maximum Application Address Fault\n");
+		Crash();
+	}
+
 	capacity = _capacity;
 	use_count = 0;
 
@@ -115,24 +126,31 @@ LockFreePool<DATA>::~LockFreePool()
 template<class DATA>
 DATA* LockFreePool<DATA>::Alloc()
 {
-	BLOCK_NODE* old_top;
-	BLOCK_NODE* next;
-	
+	long long old_top;  // 비교용
+	BLOCK_NODE* old_top_addr; // 실제 주소
+	BLOCK_NODE* next; // 다음 top
+	BLOCK_NODE* new_top;
+
 	trace(40, NULL, NULL);
 
 	while (1)
 	{
-		old_top = top;
-		trace(41, old_top, NULL);
-
-		next = old_top->next;
+		old_top = (long long)top;
+		old_top_addr = (BLOCK_NODE*)(old_top & dfADDRESS_MASK);
+		trace(41, (PVOID)old_top_addr, NULL);
+		
+		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
+		next = old_top_addr->next;
 		trace(42, next, NULL);
 
-		if (old_top == (BLOCK_NODE*)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)next, (PVOID)old_top))
+		new_top = (BLOCK_NODE*)((long long)next | (next_cnt << dfADDRESS_BIT));
+
+
+		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
-			trace(43, old_top, next);
-			old_top->use++;
-			if (old_top->use == 2)
+			trace(43, old_top_addr, next);
+			old_top_addr->use++;
+			if (old_top_addr->use == 2)
 				int a = 0;
 			break;
 		}
@@ -141,14 +159,16 @@ DATA* LockFreePool<DATA>::Alloc()
 
 	
 
-	return (DATA*)&old_top->data;
+	return (DATA*)&old_top_addr->data;
 }
 
 template<class DATA>
 bool LockFreePool<DATA>::Free(DATA* data)
 {
-	BLOCK_NODE* old_top;
+	long long old_top;
 	BLOCK_NODE* node = (BLOCK_NODE*)((char*)data - sizeof(BLOCK_NODE::pad1));
+	BLOCK_NODE* old_top_addr;
+	PVOID new_top;
 
 	if (node->pad1 != dfPAD || node->pad2 != dfPAD)
 	{
@@ -164,13 +184,20 @@ bool LockFreePool<DATA>::Free(DATA* data)
 
 	while (1)
 	{
-		old_top = top;
-		trace(61, old_top, NULL);
-		node->next = old_top;
-		trace(62, node->next, old_top);
-		if (old_top == (BLOCK_NODE*)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)node, (PVOID)old_top))
+		old_top = (long long)top;
+		old_top_addr = (BLOCK_NODE*)(old_top & dfADDRESS_MASK);
+		trace(61, old_top_addr, NULL);
+
+		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
+
+		node->next = old_top_addr;
+		trace(62, node->next, old_top_addr);
+
+		new_top = (BLOCK_NODE*)((long long)node | (next_cnt << dfADDRESS_BIT));
+
+		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
-			trace(63, old_top, node);
+			trace(63, (PVOID)old_top_addr, node);
 			break;
 		}
 

@@ -30,12 +30,6 @@ DWORD WINAPI worker3(LPVOID param);
 
 bool close = false;
 
-void Crash()
-{
-	trace(99, NULL, NULL);
-	close = true;
-	Sleep(INFINITE);
-}
 
 LockFreePool<int> testpool(4000);
 
@@ -61,7 +55,7 @@ int main()
 
 	for (int i = 0; i < dfTHREAD; i++)
 	{
-		thread[i] = CreateThread(NULL, 0, worker3, 0, 0, NULL);
+		thread[i] = CreateThread(NULL, 0, worker, 0, 0, NULL);
 
 	}
 

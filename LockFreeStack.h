@@ -10,18 +10,12 @@ class LockFreeStack
 {
 	struct Node
 	{
-		__int64 front_padding;
 		T data;
 		Node* next;
 		int del_cnt;
-		__int64 rear_padding;
 
 		Node()
 		{
-			char* f = (char*)this - sizeof(__int64);
-			char* r = (char*)this + sizeof(Node);
-			memcpy(&front_padding, f, sizeof(__int64));
-			memcpy(&rear_padding, r, sizeof(__int64));
 
 			next = nullptr;
 			del_cnt = 0;
@@ -36,24 +30,28 @@ class LockFreeStack
 
 public:
 
-	LockFreeStack();
+	LockFreeStack(unsigned int size = 10000);
 	~LockFreeStack();
 
 	void Push(T data);
-	void Pop(T* data);
+	bool Pop(T* data);
+	int GetSize();
+
 
 private:
 
 	alignas(64) Node* _top;
+	alignas(64) ULONG64 _size;
+
 	LockFreePool<Node> *_pool;
 
 };
 
 template<class T>
-inline LockFreeStack<T>::LockFreeStack()
+inline LockFreeStack<T>::LockFreeStack(unsigned int size)
 {
 	_top = nullptr;
-	_pool = new LockFreePool<Node>(10000);
+	_pool = new LockFreePool<Node>(size);
 }
 
 template<class T>
@@ -66,21 +64,30 @@ template<class T>
 inline void LockFreeStack<T>::Push(T data)
 {
 	Node* temp = _pool->Alloc();
-	temp->del_cnt = 0;
 	//trace(0, temp, NULL);
-	temp->data = data;
-	Node* top;
 
-	Node* ret;
+	temp->del_cnt = 0;
+	temp->data = data;
+
+	long long old_top;
+	Node* old_top_addr;
+	Node* new_top;
+
 	while (1)
 	{
-		top = _top;
-		//trace(1, top, NULL);
-		temp->next = top;
-		//trace(2, NULL, top);
+		old_top = (long long)_top;
+		old_top_addr = (Node*)(old_top & dfADDRESS_MASK);
+		//trace(1, old_top_addr, NULL);
+		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
+		temp->next = old_top_addr;
+		//trace(2, NULL, old_top_addr);
 
-		if (top == (ret = (Node*)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)temp, (PVOID)top))) {
-			//trace(3, top, temp);
+		new_top = (Node*)((long long)temp | (next_cnt << dfADDRESS_BIT));
+
+		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)new_top, (PVOID)old_top))
+		{
+			//trace(3, old_top_addr, temp);
+			InterlockedIncrement(&_size);
 			break;
 		}
 
@@ -91,36 +98,51 @@ inline void LockFreeStack<T>::Push(T data)
 } 
 
 template<class T>
-inline void LockFreeStack<T>::Pop(T* data)
+inline bool LockFreeStack<T>::Pop(T* data)
 {
 	//trace(20, NULL, NULL);
-	Node* top;
+	long long old_top;
+	Node* old_top_addr;
 	Node* next;
-	Node* ret;
+	Node* new_top;
 
 	while (1)
 	{
-		top = _top;
+		old_top = (long long)_top;
+		old_top_addr = (Node*)(old_top & dfADDRESS_MASK);
 		//trace(21, top, NULL);
-		if (top == nullptr)
+		if (old_top_addr == nullptr)
 		{
-			int a = 0;
+			data = nullptr;
+			return false;
 		};
-		next = top->next;
+
+		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
+		next = old_top_addr->next;
 		//trace(22, next, NULL);
 
-		if (top == ( ret = (Node*)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)next, (PVOID)top) ))
+		new_top = (Node*)((long long)next | (next_cnt << dfADDRESS_BIT));
+
+		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)new_top, (PVOID)old_top))
 		{
-			//trace(23, top, next);
-			*data = top->data;
-			top->del_cnt--;
-			if (top->del_cnt == -2)
+			//trace(23, old_top_addr, next);
+			*data = old_top_addr->data;
+			old_top_addr->del_cnt--;
+			if (old_top_addr->del_cnt == -2)
 				int a = 0;
-			_pool->Free(top);
-			//trace(24, top, NULL);
+			_pool->Free(old_top_addr);
+			//trace(24, old_top_addr, NULL);
+
+			InterlockedDecrement(&_size);
 			break;
 		}
 	}
 
-	return;
+	return true;
+}
+
+template<class T>
+inline int LockFreeStack<T>::GetSize()
+{
+	return _size;
 }

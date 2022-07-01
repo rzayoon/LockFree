@@ -1,4 +1,5 @@
 #include <Windows.h>
+#include <stdio.h>
 #include "Tracer.h"
 
 
@@ -17,4 +18,17 @@ void trace(char code, PVOID node1, PVOID node2)
 	buf[_pos].info = code;
 	buf[_pos].l_node = node1;
 	buf[_pos].r_node = node2;
+}
+
+void Crash()
+{
+	trace(99, NULL, NULL);
+	
+	printf("Crash!");
+
+	Sleep(INFINITE);
+
+	int a = 0;
+	// suspend other threads, and run to Write file
+
 }

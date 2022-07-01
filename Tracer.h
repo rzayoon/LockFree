@@ -10,3 +10,6 @@ struct DebugNode
 };
 
 void trace(char code, PVOID node1, PVOID node2);
+
+
+void Crash();
