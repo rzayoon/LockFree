@@ -32,5 +32,8 @@
     <ClInclude Include="LockFreePool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="LockFreeQueue.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

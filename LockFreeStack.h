@@ -33,7 +33,7 @@ public:
 	LockFreeStack(unsigned int size = 10000);
 	~LockFreeStack();
 
-	void Push(T data);
+	bool Push(T data);
 	bool Pop(T* data);
 	int GetSize();
 
@@ -50,6 +50,7 @@ private:
 template<class T>
 inline LockFreeStack<T>::LockFreeStack(unsigned int size)
 {
+	_size = 0;
 	_top = nullptr;
 	_pool = new LockFreePool<Node>(size);
 }
@@ -61,10 +62,12 @@ inline LockFreeStack<T>::~LockFreeStack()
 }
 
 template<class T>
-inline void LockFreeStack<T>::Push(T data)
+inline bool LockFreeStack<T>::Push(T data)
 {
 	Node* temp = _pool->Alloc();
 	//trace(0, temp, NULL);
+	if (temp == nullptr)
+		return false;
 
 	temp->del_cnt = 0;
 	temp->data = data;
@@ -77,14 +80,14 @@ inline void LockFreeStack<T>::Push(T data)
 	{
 		old_top = (long long)_top;
 		old_top_addr = (Node*)(old_top & dfADDRESS_MASK);
-		//trace(1, old_top_addr, NULL);
 		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
+		//trace(1, old_top_addr, NULL);
 		temp->next = old_top_addr;
 		//trace(2, NULL, old_top_addr);
 
 		new_top = (Node*)((long long)temp | (next_cnt << dfADDRESS_BIT));
 
-		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&_top, (PVOID)new_top, (PVOID)old_top))
+		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&_top, new_top, (PVOID)old_top))
 		{
 			//trace(3, old_top_addr, temp);
 			InterlockedIncrement(&_size);
@@ -93,7 +96,7 @@ inline void LockFreeStack<T>::Push(T data)
 
 	}
 
-	return;
+	return true;
 
 } 
 

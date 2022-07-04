@@ -162,6 +162,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LockFreePool.h" />
+    <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeStack.h" />
     <ClInclude Include="Tracer.h" />
   </ItemGroup>

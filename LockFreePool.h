@@ -131,27 +131,34 @@ DATA* LockFreePool<DATA>::Alloc()
 	BLOCK_NODE* next; // ´ÙÀ½ top
 	BLOCK_NODE* new_top;
 
-	trace(40, NULL, NULL);
+	//trace(40, NULL, NULL);
+
 
 	while (1)
 	{
 		old_top = (long long)top;
 		old_top_addr = (BLOCK_NODE*)(old_top & dfADDRESS_MASK);
-		trace(41, (PVOID)old_top_addr, NULL);
+		//trace(41, (PVOID)old_top_addr, NULL);
 		
+		if (old_top_addr == nullptr)
+		{
+			return nullptr;
+		}
+
+
 		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
 		next = old_top_addr->next;
-		trace(42, next, NULL);
+		//trace(42, next, NULL);
 
 		new_top = (BLOCK_NODE*)((long long)next | (next_cnt << dfADDRESS_BIT));
 
 
 		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
-			trace(43, old_top_addr, next);
+			//trace(43, old_top_addr, next);
 			old_top_addr->use++;
 			if (old_top_addr->use == 2)
-				int a = 0;
+				Crash();
 			break;
 		}
 	}
@@ -172,13 +179,13 @@ bool LockFreePool<DATA>::Free(DATA* data)
 
 	if (node->pad1 != dfPAD || node->pad2 != dfPAD)
 	{
-		int a = 0;
+		Crash();
 	}
 	
 	node->use = 0;
 
 
-	trace(60, node, NULL);
+	//trace(60, node, NULL);
 
 	
 
@@ -186,18 +193,18 @@ bool LockFreePool<DATA>::Free(DATA* data)
 	{
 		old_top = (long long)top;
 		old_top_addr = (BLOCK_NODE*)(old_top & dfADDRESS_MASK);
-		trace(61, old_top_addr, NULL);
+		//trace(61, old_top_addr, NULL);
 
 		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
 
 		node->next = old_top_addr;
-		trace(62, node->next, old_top_addr);
+		//trace(62, node->next, old_top_addr);
 
 		new_top = (BLOCK_NODE*)((long long)node | (next_cnt << dfADDRESS_BIT));
 
 		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
-			trace(63, (PVOID)old_top_addr, node);
+			//trace(63, (PVOID)old_top_addr, node);
 			break;
 		}
 
