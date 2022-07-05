@@ -110,6 +110,8 @@ LockFreePool<DATA>::LockFreePool(int _capacity, bool _placement_new)
 
 	}
 	top = next;
+
+
 }
 
 template<class DATA>
@@ -126,7 +128,7 @@ LockFreePool<DATA>::~LockFreePool()
 template<class DATA>
 DATA* LockFreePool<DATA>::Alloc()
 {
-	long long old_top;  // 비교용
+	unsigned long long old_top;  // 비교용
 	BLOCK_NODE* old_top_addr; // 실제 주소
 	BLOCK_NODE* next; // 다음 top
 	BLOCK_NODE* new_top;
@@ -136,7 +138,7 @@ DATA* LockFreePool<DATA>::Alloc()
 
 	while (1)
 	{
-		old_top = (long long)top;
+		old_top = (unsigned long long)top;
 		old_top_addr = (BLOCK_NODE*)(old_top & dfADDRESS_MASK);
 		//trace(41, (PVOID)old_top_addr, NULL);
 		
@@ -146,14 +148,14 @@ DATA* LockFreePool<DATA>::Alloc()
 		}
 
 
-		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
+		unsigned long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
 		next = old_top_addr->next;
-		//trace(42, next, NULL);
+		//trace(42, next, NULL, next_cnt);
 
-		new_top = (BLOCK_NODE*)((long long)next | (next_cnt << dfADDRESS_BIT));
+		new_top = (BLOCK_NODE*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
 
 
-		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
+		if (old_top == (unsigned long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
 			//trace(43, old_top_addr, next);
 			old_top_addr->use++;
@@ -172,7 +174,7 @@ DATA* LockFreePool<DATA>::Alloc()
 template<class DATA>
 bool LockFreePool<DATA>::Free(DATA* data)
 {
-	long long old_top;
+	unsigned long long old_top;
 	BLOCK_NODE* node = (BLOCK_NODE*)((char*)data - sizeof(BLOCK_NODE::pad1));
 	BLOCK_NODE* old_top_addr;
 	PVOID new_top;
@@ -191,18 +193,18 @@ bool LockFreePool<DATA>::Free(DATA* data)
 
 	while (1)
 	{
-		old_top = (long long)top;
+		old_top = (unsigned long long)top;
 		old_top_addr = (BLOCK_NODE*)(old_top & dfADDRESS_MASK);
 		//trace(61, old_top_addr, NULL);
 
-		long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
+		unsigned long long next_cnt = (old_top >> dfADDRESS_BIT) + 1;
 
 		node->next = old_top_addr;
-		//trace(62, node->next, old_top_addr);
+		//trace(62, node->next, old_top_addr, next_cnt);
 
-		new_top = (BLOCK_NODE*)((long long)node | (next_cnt << dfADDRESS_BIT));
+		new_top = (BLOCK_NODE*)((unsigned long long)node | (next_cnt << dfADDRESS_BIT));
 
-		if (old_top == (long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
+		if (old_top == (unsigned long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
 			//trace(63, (PVOID)old_top_addr, node);
 			break;

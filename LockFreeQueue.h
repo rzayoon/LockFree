@@ -69,7 +69,7 @@ template<class T>
 inline bool LockFreeQueue<T>::Enqueue(T data)
 {
 	Node* node = _pool->Alloc();
-	long long old_tail;
+	unsigned long long old_tail;
 	Node* tail;
 	Node* new_tail;
 	Node* next = nullptr;
@@ -80,13 +80,12 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 	trace(10, node, (PVOID)data, 0);
 	
 	node->data = data;
-	node->next = nullptr;
-
+	int loop = 0;
 	while (true)
 	{
-		old_tail = (long long)_tail;
+		old_tail = (unsigned long long)_tail;
 		tail = (Node*)(old_tail & dfADDRESS_MASK);
-		long long next_cnt = (old_tail >> dfADDRESS_BIT) + 1;
+		unsigned long long next_cnt = (old_tail >> dfADDRESS_BIT) + 1;
 
 		trace(11, tail, NULL, next_cnt - 1);
 
@@ -94,12 +93,18 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 
 		trace(12, next, NULL, next_cnt);
 
-		new_tail = (Node*)((long long)node | (next_cnt << dfADDRESS_BIT));
+		new_tail = (Node*)((unsigned long long)node | (next_cnt << dfADDRESS_BIT));
+
+		if (++loop > 1000)
+		{
+			Crash();
+		}
 
 		if (next == nullptr)
 		{
 			if (InterlockedCompareExchangePointer((PVOID*)&tail->next, node, next) == next)
 			{
+				node->next = nullptr;
 				if (next != nullptr)
 					Crash();
 				trace(13, next, node, next_cnt);
@@ -123,12 +128,12 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 		return false;
 
 	trace(30, NULL, NULL, _size);
-
+	int loop = 0;
 	while (true)
 	{
-		long long old_head = (long long)_head;
+		unsigned long long old_head = (unsigned long long)_head;
 		Node* head = (Node*)(old_head & dfADDRESS_MASK);
-		long long next_cnt = (old_head >> dfADDRESS_BIT) + 1;
+		unsigned long long next_cnt = (old_head >> dfADDRESS_BIT) + 1;
 
 		trace(31, head, NULL, next_cnt - 1);
 
@@ -136,7 +141,11 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 
 		trace(32, next, NULL, next_cnt);
 
-		Node* new_head = (Node*)((long long)next | (next_cnt << dfADDRESS_BIT));
+		Node* new_head = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
+
+		loop++;
+		if (loop > 100)
+			Crash();
 
 		if (next == nullptr)
 		{
