@@ -25,7 +25,7 @@ void trace(char code, PVOID node1, PVOID node2, long long cnt)
 
 void Crash()
 {
-	trace(99, NULL, NULL);
+	trace(99, NULL, NULL); // 99 로그 밑으로는 무시
 	
 	int a = 0;
 	// suspend other threads, and run to Write file

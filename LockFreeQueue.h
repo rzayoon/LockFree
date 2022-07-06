@@ -73,6 +73,7 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 	Node* tail;
 	Node* new_tail;
 	Node* next = nullptr;
+	unsigned long long next_cnt;
 
 	if (node == nullptr)
 		return false;
@@ -80,12 +81,13 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 	trace(10, node, (PVOID)data, 0);
 	
 	node->data = data;
+	node->next = nullptr;
 	int loop = 0;
 	while (true)
 	{
 		old_tail = (unsigned long long)_tail;
 		tail = (Node*)(old_tail & dfADDRESS_MASK);
-		unsigned long long next_cnt = (old_tail >> dfADDRESS_BIT) + 1;
+		next_cnt = (old_tail >> dfADDRESS_BIT) + 1;
 
 		trace(11, tail, NULL, next_cnt - 1);
 
@@ -93,9 +95,8 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 
 		trace(12, next, NULL, next_cnt);
 
-		new_tail = (Node*)((unsigned long long)node | (next_cnt << dfADDRESS_BIT));
 
-		if (++loop > 1000)
+		if (++loop > 100)
 		{
 			Crash();
 		}
@@ -104,15 +105,27 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 		{
 			if (InterlockedCompareExchangePointer((PVOID*)&tail->next, node, next) == next)
 			{
-				node->next = nullptr;
-				if (next != nullptr)
-					Crash();
 				trace(13, next, node, next_cnt);
-				InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
-				trace(14, tail, node, next_cnt);
+				if (_tail == (PVOID)old_tail)
+				{
+					new_tail = (Node*)((unsigned long long)node | (next_cnt << dfADDRESS_BIT));
+					InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
+					trace(14, tail, node, next_cnt);
+				}
+				else
+					trace(17, tail, node, next_cnt);
 				break;
 			}
 		}
+		else
+		{
+			new_tail = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
+			if ((PVOID)old_tail == InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail))
+				trace(19, tail, new_tail, next_cnt);
+			else
+				trace(18, tail, new_tail, next_cnt);
+		}
+		
 	}
 	InterlockedIncrement(&_size);
 
@@ -124,37 +137,40 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 {
 	ULONG64 size = InterlockedDecrement(&_size);
 	if (size < 0) {
-		InterlockedDecrement(&_size);
+		InterlockedIncrement(&_size);
 		*data = nullptr;
 		return false;
 	}
+	unsigned long long old_head;
+	Node* head;
+	Node* next;
+	unsigned long long next_cnt;
+
 	trace(30, NULL, NULL, _size);
 	int loop = 0;
 	while (true)
 	{
-		unsigned long long old_head = (unsigned long long)_head;
-		Node* head = (Node*)(old_head & dfADDRESS_MASK);
-		unsigned long long next_cnt = (old_head >> dfADDRESS_BIT) + 1;
+		old_head = (unsigned long long)_head;
+		head = (Node*)(old_head & dfADDRESS_MASK);
+		next_cnt = (old_head >> dfADDRESS_BIT) + 1;
 
 		trace(31, head, NULL, next_cnt - 1);
 
-		Node* next = head->next;
+		next = head->next;
 
 		trace(32, next, NULL, next_cnt);
 
-		Node* new_head = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
-
-		loop++;
-		if (loop > 100)
+		if (++loop > 100)
 			Crash();
 
 		if (next == nullptr)
 		{
-			continue;
+			continue; // 없으면 진입 안했을 것이므로 재시도
 		}
 		else
 		{
-			*data = next->data; // data가 객체인 경우.. 느려질 것 사용자의 문제. 포인터나 일반 타입이 template type이었어야 한다.
+			Node* new_head = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
+			*data = next->data; // data가 객체인 경우.. 느려질 것 사용자의 문제. template type이 복사 비용이 적은 포인터나 일반 타입이었어야 한다.
 			trace(33, NULL, (PVOID)*data);
 			if (InterlockedCompareExchangePointer((PVOID*)&_head, new_head, (PVOID)old_head) == (PVOID)old_head)
 			{
