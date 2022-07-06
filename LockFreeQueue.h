@@ -111,9 +111,7 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 				InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
 				trace(14, tail, node, next_cnt);
 				break;
-
 			}
-
 		}
 	}
 	InterlockedIncrement(&_size);
@@ -124,9 +122,12 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 template<class T>
 inline bool LockFreeQueue<T>::Dequeue(T* data)
 {
-	if (_size == 0)
+	ULONG64 size = InterlockedDecrement(&_size);
+	if (size < 0) {
+		InterlockedDecrement(&_size);
+		*data = nullptr;
 		return false;
-
+	}
 	trace(30, NULL, NULL, _size);
 	int loop = 0;
 	while (true)
@@ -153,7 +154,7 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 		}
 		else
 		{
-			*data = next->data;
+			*data = next->data; // data가 객체인 경우.. 느려질 것 사용자의 문제. 포인터나 일반 타입이 template type이었어야 한다.
 			trace(33, NULL, (PVOID)*data);
 			if (InterlockedCompareExchangePointer((PVOID*)&_head, new_head, (PVOID)old_head) == (PVOID)old_head)
 			{
@@ -166,7 +167,6 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 		}
 	}
 
-	InterlockedDecrement(&_size);
 	return true;
 }
 
