@@ -94,9 +94,10 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 		next = tail->next;
 
 		trace(12, next, NULL, next_cnt);
+		if (tail == next)
+			Crash();
 
-
-		if (++loop > 100)
+		if (++loop > 300)
 		{
 			Crash();
 		}
@@ -160,7 +161,7 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 
 		trace(32, next, NULL, next_cnt);
 
-		if (++loop > 100)
+		if (++loop > 300)
 			Crash();
 
 		if (next == nullptr)

@@ -8,7 +8,7 @@
 
 LockFreeStack<int> stack;
 
-#define dfTHREAD 4
+#define dfTHREAD 8
 #define dfTHREAD_ALLOC 100
 #define dfMEMORY_POOL_MAX dfTHREAD * dfTHREAD_ALLOC 
 

@@ -5,14 +5,14 @@
 
 DebugNode buf[65536];
 
-alignas(64) LONG pos = 0;
+alignas(64) ULONG64 pos = 0;
 const unsigned int mask = 0xFFFF;
 
 
 
 void trace(char code, PVOID node1, PVOID node2, long long cnt)
 {
-	unsigned int seq = InterlockedIncrement(&pos);
+	unsigned long long seq = InterlockedIncrement(&pos);
 	unsigned int _pos = seq & mask;
 
 	buf[_pos].id = GetCurrentThreadId();
