@@ -82,7 +82,6 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 	
 	node->data = data;
 	node->next = nullptr;
-	int loop = 0;
 	while (true)
 	{
 		old_tail = (unsigned long long)_tail;
@@ -96,11 +95,6 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 		trace(12, next, NULL, next_cnt);
 		if (tail == next)
 			Crash();
-
-		if (++loop > 300)
-		{
-			Crash();
-		}
 
 		if (next == nullptr)
 		{
@@ -118,7 +112,7 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 				break;
 			}
 		}
-		else
+		else // 아직 tail을 밀어줘야 할 스레드가 안했으면 지금 한다.
 		{
 			new_tail = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
 			if ((PVOID)old_tail == InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail))
@@ -161,15 +155,37 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 
 		trace(32, next, NULL, next_cnt);
 
-		if (++loop > 300)
+		if (++loop > 500)
 			Crash();
 
 		if (next == nullptr)
 		{
-			continue; // 없으면 진입 안했을 것이므로 재시도
+			// 정말 없었으면 안들어왔어야 함.
+			// 그럼에도 원인이 될 수 있는 상황
+			// 1. 지금 보고 있는 head가 다른 스레드에서 dequeue되었고 다시 enque과정에서 next가 null로 쓰여졌다.
+			// 2. 한 스레드가 enque에서 노드 하나를 tail로 저장하고 잠시 안돌았음
+			//    -> 해당 노드가 queue에서 빠져나감 -> 다시 enqueue에서 next = null 됨
+			//    -> 멈춰있던 스레드가 동작하면서 next에 이어버림 -> 사이즈 증가
+			//    -> 해당 노드를 연결해야하는 스레드가 정지중.
+			//    -> 이 때 디큐 시도하는 스레드는 기다리느라 못하는 상태가 됨.
+			//    이 문제는 enqueue 중인 스레드가 일을 마치면 해결이 된다.
+			//    하지만 다른 스레드 때문에 해야할 일을 못하는 것은 락프리의 목적에 위배된다.
+			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 그냥 없는 것으로 본다..
+			continue;
+
 		}
 		else
 		{
+			unsigned long long old_tail = (unsigned long long)_tail;
+			if (old_head == old_tail) // cnt까지 일치하면 같은 것
+			{
+				Node* tail = (Node*)(old_tail & dfADDRESS_MASK); 
+				unsigned long long tail_cnt = (old_tail >> dfADDRESS_BIT) + 1;
+				Node* new_tail = (Node*)((unsigned long long)next | (tail_cnt << dfADDRESS_BIT));
+				InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
+				trace(39, tail, next, 0);
+			}
+
 			Node* new_head = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
 			*data = next->data; // data가 객체인 경우.. 느려질 것 사용자의 문제. template type이 복사 비용이 적은 포인터나 일반 타입이었어야 한다.
 			trace(33, NULL, (PVOID)*data);

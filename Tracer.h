@@ -3,7 +3,7 @@
 struct DebugNode
 {
 	unsigned int id;
-	unsigned int seq;
+	unsigned long long seq;
 	char info;
 	PVOID l_node;
 	PVOID r_node;

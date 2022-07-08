@@ -38,7 +38,7 @@ void Crash()
 	fprintf_s(fp, "index,thread,seq,act,l_node,r_node,cnt\n");
 	for (int i = 0; i < mask; i++)
 	{
-		fprintf_s(fp, "%d,%d,%d,%d,0x%016p,0x%016p,%lld\n",
+		fprintf_s(fp, "%d,%d,%llu,%d,0x%016p,0x%016p,%lld\n",
 			i, buf[i].id, buf[i].seq, buf[i].info, buf[i].l_node, buf[i].r_node, buf[i].cnt);
 	}
 	fclose(fp);

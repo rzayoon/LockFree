@@ -8,7 +8,7 @@
 
 LockFreeStack<int> stack;
 
-#define dfTHREAD 8
+#define dfTHREAD 4
 #define dfTHREAD_ALLOC 100
 #define dfMEMORY_POOL_MAX dfTHREAD * dfTHREAD_ALLOC 
 
@@ -53,7 +53,7 @@ int main()
 		g_MemoryPool.Free(data[i]);
 	}
 
-	for (int i = 0; i < 40; i++)
+	for (int i = 0; i < 12; i++)
 	{
 		q_data[i] = new st_TEST_DATA;
 		q_data[i]->lCount = 0;
@@ -165,7 +165,7 @@ DWORD WINAPI worker3(LPVOID param)
 
 }
 
-#define dfQueueTest 5
+#define dfQueueTest 3
 DWORD WINAPI QueueTestWorker(LPVOID param)
 {
 
