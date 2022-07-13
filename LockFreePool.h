@@ -15,7 +15,6 @@ class LockFreePool
 		__int64 pad1;
 		DATA data;
 		__int64 pad2;
-		alignas(64) LONG use;
 		BLOCK_NODE* next;
 	
 
@@ -25,7 +24,6 @@ class LockFreePool
 
 			pad2 = dfPAD;
 			next = nullptr;
-			use = 0;
 		}
 	};
 
@@ -157,14 +155,11 @@ DATA* LockFreePool<DATA>::Alloc()
 
 		if (old_top == (unsigned long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
+			InterlockedIncrement((LONG*)&use_count);
 			//trace(43, old_top_addr, next);
-			old_top_addr->use++;
-			if (old_top_addr->use == 2)
-				Crash();
 			break;
 		}
 	}
-	InterlockedIncrement((LONG*)&use_count);
 
 	
 
@@ -179,13 +174,11 @@ bool LockFreePool<DATA>::Free(DATA* data)
 	BLOCK_NODE* old_top_addr;
 	PVOID new_top;
 
-	if (node->pad1 != dfPAD || node->pad2 != dfPAD)
+	if (node->pad1 != dfPAD || node->pad2 != dfPAD) // 사용 중에 버퍼 오버런 있었는지 체크용
 	{
 		Crash();
 	}
 	
-	node->use = 0;
-
 
 	//trace(60, node, NULL);
 
