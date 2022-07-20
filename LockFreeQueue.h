@@ -94,7 +94,6 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 		{
 			if (InterlockedCompareExchangePointer((PVOID*)&tail->next, node, next) == next)
 			{
-				trace(13, next, node, next_cnt);
 				if (_tail == (PVOID)old_tail)
 				{
 					new_tail = (Node*)((unsigned long long)node | (next_cnt << dfADDRESS_BIT));

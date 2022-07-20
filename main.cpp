@@ -25,7 +25,7 @@ struct st_TEST_DATA
 LockFreePool<st_TEST_DATA> g_MemoryPool(0);
 
 LockFreeQueue<st_TEST_DATA*> g_Queue;
-
+LockFreeStack<st_TEST_DATA*> g_Stack;
 
 DWORD WINAPI QueueTestWorker(LPVOID param);
 
@@ -60,7 +60,7 @@ int main()
 		q_data[i] = new st_TEST_DATA;
 		q_data[i]->lCount = 0;
 		q_data[i]->lData = 0x0000000055555555;
-		g_Queue.Enqueue(q_data[i]);
+		g_Stack.Push(q_data[i]);
 	}
 
 
@@ -68,7 +68,7 @@ int main()
 
 	for (int i = 0; i < dfTHREAD; i++)
 	{
-		thread[i] = CreateThread(NULL, 0, worker3, 0, 0, NULL);
+		thread[i] = CreateThread(NULL, 0, QueueTestWorker, 0, 0, NULL);
 
 	}
 
@@ -180,7 +180,7 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 	{
 		for (int i = 0; i < dfQueueTest; i++) {
 
-			g_Queue.Dequeue(&arr[i]);
+			g_Stack.Pop(&arr[i]);
 
 			if (arr[i] == nullptr)
 				Crash();
@@ -232,7 +232,7 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 		for (int i = dfQueueTest-1; i >= 0; i--) {
 			InterlockedDecrement64(&arr[i]->lCount);
-			g_Queue.Enqueue(arr[i]);
+			g_Stack.Push(arr[i]);
 		}
 
 	}
