@@ -171,8 +171,9 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			//    이 문제는 enqueue 중인 스레드가 일을 마치면 해결이 된다.
 			//    하지만 다른 스레드 때문에 해야할 일을 못하는 것은 락프리의 목적에 위배된다.
 			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 그냥 없는 것으로 본다..
-			continue;
-
+			InterlockedIncrement(&_size);
+			*data = nullptr;
+			return false;
 		}
 		else
 		{

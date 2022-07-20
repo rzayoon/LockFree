@@ -18,9 +18,10 @@ struct st_TEST_DATA
 {
 	volatile LONG64 lData;
 	volatile LONG64 lCount;
+	LONG64 tt;
 };
 
-LockFreePool<st_TEST_DATA> g_MemoryPool(dfMEMORY_POOL_MAX);
+LockFreePool<st_TEST_DATA> g_MemoryPool(0);
 
 LockFreeQueue<st_TEST_DATA*> g_Queue;
 
@@ -66,7 +67,7 @@ int main()
 
 	for (int i = 0; i < dfTHREAD; i++)
 	{
-		thread[i] = CreateThread(NULL, 0, QueueTestWorker, 0, 0, NULL);
+		thread[i] = CreateThread(NULL, 0, worker3, 0, 0, NULL);
 
 	}
 
