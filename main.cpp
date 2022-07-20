@@ -5,6 +5,7 @@
 #include "LockFreePool.h"
 #include "LockFreeStack.h"
 #include "LockFreeQueue.h"
+#include "Tracer.h"
 
 LockFreeStack<int> stack;
 

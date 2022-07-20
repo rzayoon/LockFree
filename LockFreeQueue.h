@@ -1,7 +1,6 @@
 #pragma once
 #include <Windows.h>
 #include "LockFreePool.h"
-#include "Tracer.h"
 
 
 
@@ -78,8 +77,6 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 	if (node == nullptr)
 		return false;
 
-	trace(10, node, (PVOID)data, 0);
-	
 	node->data = data;
 	node->next = nullptr;
 	while (true)
@@ -88,13 +85,10 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 		tail = (Node*)(old_tail & dfADDRESS_MASK);
 		next_cnt = (old_tail >> dfADDRESS_BIT) + 1;
 
-		trace(11, tail, NULL, next_cnt - 1);
 
 		next = tail->next;
 
-		trace(12, next, NULL, next_cnt);
-		if (tail == next)
-			Crash();
+
 
 		if (next == nullptr)
 		{
@@ -105,20 +99,15 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 				{
 					new_tail = (Node*)((unsigned long long)node | (next_cnt << dfADDRESS_BIT));
 					InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
-					trace(14, tail, node, next_cnt);
 				}
-				else
-					trace(17, tail, node, next_cnt);
 				break;
 			}
 		}
 		else // 아직 tail을 밀어줘야 할 스레드가 안했으면 지금 한다.
 		{
 			new_tail = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
-			if ((PVOID)old_tail == InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail))
-				trace(19, tail, new_tail, next_cnt);
-			else
-				trace(18, tail, new_tail, next_cnt);
+			InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
+
 		}
 		
 	}
@@ -141,22 +130,18 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 	Node* next;
 	unsigned long long next_cnt;
 
-	trace(30, NULL, NULL, _size);
-	int loop = 0;
 	while (true)
 	{
 		old_head = (unsigned long long)_head;
 		head = (Node*)(old_head & dfADDRESS_MASK);
 		next_cnt = (old_head >> dfADDRESS_BIT) + 1;
 
-		trace(31, head, NULL, next_cnt - 1);
+
 
 		next = head->next;
 
-		trace(32, next, NULL, next_cnt);
+	
 
-		if (++loop > 500)
-			Crash();
 
 		if (next == nullptr)
 		{
@@ -184,18 +169,15 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 				unsigned long long tail_cnt = (old_tail >> dfADDRESS_BIT) + 1;
 				Node* new_tail = (Node*)((unsigned long long)next | (tail_cnt << dfADDRESS_BIT));
 				InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
-				trace(39, tail, next, 0);
 			}
 
 			Node* new_head = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
-			*data = next->data; // data가 객체인 경우.. 느려질 것 사용자의 문제. template type이 복사 비용이 적은 포인터나 일반 타입이었어야 한다.
-			trace(33, NULL, (PVOID)*data);
+			*data = next->data; 
+			// data가 객체인 경우.. 느려질 것 사용자의 문제. template type이 복사 비용이 적은 포인터나 일반 타입이었어야 한다.
 			if (InterlockedCompareExchangePointer((PVOID*)&_head, new_head, (PVOID)old_head) == (PVOID)old_head)
 			{
-				trace(34, head, next, next_cnt); // 더미 , 새 더미(새 head)
 
 				_pool->Free(head);
-				trace(35, head, NULL, 0); // 반환
 				break;
 			}
 		}

@@ -3,7 +3,6 @@
 
 #include <new>
 
-#include "Tracer.h"
 
 #define dfPAD -1
 #define dfADDRESS_MASK 0x00007fffffffffff
@@ -75,6 +74,14 @@ public:
 	}
 
 protected:
+
+	void Crash()
+	{
+		int* a = (int*)0;
+		a = 0;
+
+	}
+
 	BLOCK_NODE* top;
 
 	bool placement_new;
