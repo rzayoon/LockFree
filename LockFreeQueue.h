@@ -39,11 +39,10 @@ public:
 
 private:
 
-	alignas(64) Node* _head;
 	alignas(64) Node* _tail;
-
-	alignas(64) ULONG64 _size;
-
+	alignas(64) Node* _head;
+	alignas(64) LONG64 _size;
+	alignas(64) char b;
 	LockFreePool<Node>* _pool;
 
 };
@@ -110,7 +109,7 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 		}
 		
 	}
-	InterlockedIncrement(&_size);
+	InterlockedIncrement64(&_size);
 
 	return true;
 }
@@ -118,12 +117,7 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 template<class T>
 inline bool LockFreeQueue<T>::Dequeue(T* data)
 {
-	ULONG64 size = InterlockedDecrement(&_size);
-	if (size < 0) {
-		InterlockedIncrement(&_size);
-		*data = nullptr;
-		return false;
-	}
+	InterlockedDecrement64(&_size);
 	unsigned long long old_head;
 	Node* head;
 	Node* next;
@@ -155,7 +149,7 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			//    이 문제는 enqueue 중인 스레드가 일을 마치면 해결이 된다.
 			//    하지만 다른 스레드 때문에 해야할 일을 못하는 것은 락프리의 목적에 위배된다.
 			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 그냥 없는 것으로 본다..
-			InterlockedIncrement(&_size);
+			InterlockedIncrement64(&_size);
 			*data = nullptr;
 			return false;
 		}
