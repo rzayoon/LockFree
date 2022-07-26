@@ -105,7 +105,7 @@ inline bool LockFreeStack<T>::Pop(T* data)
 		old_top_addr = (Node*)(old_top & dfADDRESS_MASK);
 		if (old_top_addr == nullptr)
 		{
-			data = nullptr;
+			*data = nullptr;
 			return false;
 		};
 
