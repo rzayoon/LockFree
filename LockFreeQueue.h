@@ -34,7 +34,7 @@ public:
 
 	bool Enqueue(T data);
 	bool Dequeue(T* data);
-	int GetSize();
+	long long GetSize();
 
 
 private:
@@ -73,14 +73,11 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 	Node* next = nullptr;
 	unsigned long long next_cnt;
 
-	if (node == nullptr)
-		return false;
-
-	if(_placement_new)
-		data.~T();
+	new(&node->data) T;
 
 	node->data = data;
 	node->next = nullptr;
+
 	while (true)
 	{
 		old_tail = (unsigned long long)_tail;
@@ -172,20 +169,18 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			// data가 객체인 경우.. 느려질 것 사용자의 문제. template type이 복사 비용이 적은 포인터나 일반 타입이었어야 한다.
 			if (InterlockedCompareExchangePointer((PVOID*)&_head, new_head, (PVOID)old_head) == (PVOID)old_head)
 			{
-
+				head->data.~T();
 				_pool->Free(head);
 				break;
 			}
 		}
 	}
-	if (_placement_new)
-		new(data) T;
 
 	return true;
 }
 
 template<class T>
-inline int LockFreeQueue<T>::GetSize()
+inline long long LockFreeQueue<T>::GetSize()
 {
 	return _size;
 }

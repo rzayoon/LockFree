@@ -2,7 +2,7 @@
 #include <Windows.h>
 
 #include <new>
-
+#include <stdio.h>
 
 #define dfPAD -1
 #define dfADDRESS_MASK 0x00007fffffffffff
@@ -78,7 +78,7 @@ protected:
 	void Crash()
 	{
 		int* a = (int*)0;
-		a = 0;
+		*a = 0;
 
 	}
 
@@ -98,7 +98,7 @@ LockFreePool<DATA>::LockFreePool(int _capacity)
 	GetSystemInfo(&si);
 	if ((_int64)si.lpMaximumApplicationAddress != 0x00007ffffffeffff)
 	{
-		printf("Maximum Application Address Fault\n");
+		wprintf(L"Maximum Application Address Fault\n");
 		Crash();
 	}
 
@@ -110,6 +110,7 @@ LockFreePool<DATA>::LockFreePool(int _capacity)
 	for (unsigned int i = 0; i < capacity; i++)
 	{
 		BLOCK_NODE* temp = (BLOCK_NODE*)_aligned_malloc(sizeof(BLOCK_NODE), alignof(BLOCK_NODE));
+		ZeroMemory(&temp->data, sizeof(DATA));
 		temp->front_pad = PAD;
 		temp->back_pad = PAD;
 
@@ -157,9 +158,12 @@ DATA* LockFreePool<DATA>::Alloc()
 			InterlockedIncrement(&capacity);
 			
 			old_top_addr = (BLOCK_NODE*)_aligned_malloc(sizeof(BLOCK_NODE), alignof(BLOCK_NODE));
+			ZeroMemory(&old_top_addr->data, sizeof(DATA));
 			old_top_addr->front_pad = PAD;
 			old_top_addr->back_pad = PAD;
 			old_top_addr->next = nullptr;
+
+			break;
 		}
 
 

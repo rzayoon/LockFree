@@ -65,10 +65,12 @@ inline bool LockFreeStack<T>::Push(T data)
 	if (node == nullptr)
 		return false;
 
+
+	node->data = data;
+
 	if (_placement_new)
 		data.~T();
 
-	node->data = data;
 
 	unsigned long long old_top;
 	Node* old_top_addr;
