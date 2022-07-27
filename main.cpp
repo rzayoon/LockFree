@@ -180,10 +180,11 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 	{
 		for (int i = 0; i < dfQueueTest; i++) {
 
-			g_Stack.Pop(&arr[i]);
+			while (!g_Queue.Dequeue(&arr[i]))
+			{
 
-			if (arr[i] == nullptr)
-				Crash();
+			}
+
 			if (arr[i]->lData != 0x0000000055555555)
 				Crash();
 			if (arr[i]->lCount != 0)
@@ -232,7 +233,7 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 		for (int i = dfQueueTest-1; i >= 0; i--) {
 			InterlockedDecrement64(&arr[i]->lCount);
-			g_Stack.Push(arr[i]);
+			g_Queue.Enqueue(arr[i]);
 		}
 
 	}

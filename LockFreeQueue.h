@@ -29,7 +29,7 @@ class LockFreeQueue
 
 public:
 
-	LockFreeQueue(unsigned int size = 10000);
+	LockFreeQueue(unsigned int size = 10000, bool placement_new = false);
 	~LockFreeQueue();
 
 	bool Enqueue(T data);
@@ -42,15 +42,15 @@ private:
 	alignas(64) Node* _tail;
 	alignas(64) Node* _head;
 	alignas(64) LONG64 _size;
-	alignas(64) char b;
 	LockFreePool<Node>* _pool;
-
+	bool _placement_new;
 };
 
 template<class T>
-inline LockFreeQueue<T>::LockFreeQueue(unsigned int size)
+inline LockFreeQueue<T>::LockFreeQueue(unsigned int size, bool placement_new)
 {
 	_size = 0;
+	_placement_new = placement_new;
 	_pool = new LockFreePool<Node>(size + 1);
 	_head = _pool->Alloc();
 
@@ -75,6 +75,9 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 
 	if (node == nullptr)
 		return false;
+
+	if(_placement_new)
+		data.~T();
 
 	node->data = data;
 	node->next = nullptr;
@@ -133,7 +136,7 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 
 		next = head->next;
 
-	
+
 
 
 		if (next == nullptr)
@@ -150,7 +153,6 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			//    하지만 다른 스레드 때문에 해야할 일을 못하는 것은 락프리의 목적에 위배된다.
 			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 그냥 없는 것으로 본다..
 			InterlockedIncrement64(&_size);
-			*data = nullptr;
 			return false;
 		}
 		else
@@ -158,14 +160,15 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			unsigned long long old_tail = (unsigned long long)_tail;
 			if (old_head == old_tail) // cnt까지 일치하면 같은 것
 			{
-				Node* tail = (Node*)(old_tail & dfADDRESS_MASK); 
+				Node* tail = (Node*)(old_tail & dfADDRESS_MASK);
 				unsigned long long tail_cnt = (old_tail >> dfADDRESS_BIT) + 1;
 				Node* new_tail = (Node*)((unsigned long long)next | (tail_cnt << dfADDRESS_BIT));
 				InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
 			}
 
 			Node* new_head = (Node*)((unsigned long long)next | (next_cnt << dfADDRESS_BIT));
-			*data = next->data; 
+
+			*data = next->data;
 			// data가 객체인 경우.. 느려질 것 사용자의 문제. template type이 복사 비용이 적은 포인터나 일반 타입이었어야 한다.
 			if (InterlockedCompareExchangePointer((PVOID*)&_head, new_head, (PVOID)old_head) == (PVOID)old_head)
 			{
@@ -175,6 +178,8 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			}
 		}
 	}
+	if (_placement_new)
+		new(data) T;
 
 	return true;
 }
