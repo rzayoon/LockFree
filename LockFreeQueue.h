@@ -73,8 +73,6 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 	Node* next = nullptr;
 	unsigned long long next_cnt;
 
-	new(&node->data) T;
-
 	node->data = data;
 	node->next = nullptr;
 
@@ -83,6 +81,19 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 		old_tail = (unsigned long long)_tail;
 		tail = (Node*)(old_tail & dfADDRESS_MASK);
 		next_cnt = (old_tail >> dfADDRESS_BIT) + 1;
+
+		if (tail == nullptr)
+		{
+			new_tail = (Node*)((unsigned long long)node | (next_cnt << dfADDRESS_BIT));
+			if (InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, old_tail) == old_tail)
+			{
+
+
+
+			}
+			continue;
+
+		}
 
 
 		next = tail->next;
@@ -169,7 +180,7 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			// data가 객체인 경우.. 느려질 것 사용자의 문제. template type이 복사 비용이 적은 포인터나 일반 타입이었어야 한다.
 			if (InterlockedCompareExchangePointer((PVOID*)&_head, new_head, (PVOID)old_head) == (PVOID)old_head)
 			{
-				head->data.~T();
+				head->data.~T(); // 문제!! 더미 노드 하나가 삭제되지 않고 물려버림
 				_pool->Free(head);
 				break;
 			}
