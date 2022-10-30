@@ -24,8 +24,11 @@ struct st_TEST_DATA
 
 LockFreePool<st_TEST_DATA> g_MemoryPool(0);
 
-LockFreeQueue<st_TEST_DATA*> g_Queue;
+//LockFreeQueue<st_TEST_DATA*> g_Queue;
 LockFreeStack<st_TEST_DATA*> g_Stack;
+
+LockFreeQueue<int*> g_Queue;
+int g_tps;
 
 DWORD WINAPI QueueTestWorker(LPVOID param);
 
@@ -33,53 +36,37 @@ DWORD WINAPI worker3(LPVOID param);
 
 bool close = false;
 
-
+DWORD WINAPI Giver(LPVOID param);
+DWORD WINAPI Getter(LPVOID param);
 
 int main()
 {
-	st_TEST_DATA* data[dfMEMORY_POOL_MAX];
-
-	st_TEST_DATA* q_data[40];
-	
-
-	for (int i = 0; i < dfMEMORY_POOL_MAX; i++)
-	{
-		data[i] = g_MemoryPool.Alloc();
-		data[i]->lData = 0x0000000055555555;
-		data[i]->lCount = 0;
-
-	}
-
-	for (int i = 0; i < dfMEMORY_POOL_MAX; i++)
-	{
-		g_MemoryPool.Free(data[i]);
-	}
-
-	for (int i = 0; i < 12; i++)
-	{
-		q_data[i] = new st_TEST_DATA;
-		q_data[i]->lCount = 0;
-		q_data[i]->lData = 0x0000000055555555;
-		g_Stack.Push(q_data[i]);
-	}
-
 
 	HANDLE thread[dfTHREAD];
 
-	for (int i = 0; i < dfTHREAD; i++)
+	/*for (int i = 0; i < dfTHREAD; i++)
 	{
 		thread[i] = CreateThread(NULL, 0, worker3, 0, 0, NULL);
 
-	}
+	}*/
+	thread[0] = CreateThread(NULL, 0, Giver, 0, 0, NULL);
+	thread[1] = CreateThread(NULL, 0, Getter, 0, 0, NULL);
 
 	while (1)
 	{
-		char c = _getch();
-		if (c == 'q' || c == 'Q')
-		{
-			close = true;
-			break;
+		if (_kbhit()) {
+			char c = _getch();
+			if (c == 'q' || c == 'Q')
+			{
+				close = true;
+				break;
+			}
 		}
+		Sleep(1000);
+
+		int tps = InterlockedExchange((LONG*)&g_tps, 0);
+		wprintf(L"Dequeue TPS : %d\n", tps);
+		wprintf(L"Queue Use : %d\n", g_Queue.GetSize());
 	}
 
 
@@ -89,6 +76,32 @@ int main()
 	return 0;
 }
 
+DWORD WINAPI Giver(LPVOID param)
+{
+	while (1)
+	{
+		int* value = new int;
+		g_Queue.Enqueue(value);
+
+	}
+
+	return 0;
+}
+
+DWORD WINAPI Getter(LPVOID param)
+{
+	while (1)
+	{
+		int* ret;
+		if (g_Queue.Dequeue(&ret)) {
+			delete ret;
+			g_tps++;
+		}
+
+	}
+
+	return 0;
+}
 
 DWORD WINAPI worker3(LPVOID param)
 {
@@ -168,76 +181,76 @@ DWORD WINAPI worker3(LPVOID param)
 }
 
 #define dfQueueTest 3
-DWORD WINAPI QueueTestWorker(LPVOID param)
-{
-
-	DWORD id = GetCurrentThreadId();
-
-
-	st_TEST_DATA* arr[dfQueueTest];
-
-	while (!close)
-	{
-		for (int i = 0; i < dfQueueTest; i++) {
-
-			while (!g_Queue.Dequeue(&arr[i]))
-			{
-
-			}
-
-			if (arr[i]->lData != 0x0000000055555555)
-				Crash();
-			if (arr[i]->lCount != 0)
-				Crash();
-			InterlockedIncrement64(&arr[i]->lCount);
-
-		}
-
-		for (int i = 0; i < dfQueueTest; i++)
-		{
-			InterlockedIncrement64(&arr[i]->lData);
-		}
-
-		for (int i = 0; i < dfQueueTest; i++)
-		{
-			if (arr[i]->lData != 0x0000000055555556)
-			{
-				Crash();
-			}
-			if (arr[i]->lCount != 1)
-			{
-				Crash();
-			}
-		}
-
-		Sleep(0);
-
-		for (int i = 0; i < dfQueueTest; i++)
-		{
-			InterlockedDecrement64(&arr[i]->lData);
-
-		}
-
-
-
-		Sleep(0);
-
-		for (int i = 0; i < dfQueueTest; i++)
-		{
-			if (arr[i]->lData != 0x0000000055555555)
-			{
-				Crash();
-			}
-		}
-		
-
-		for (int i = dfQueueTest-1; i >= 0; i--) {
-			InterlockedDecrement64(&arr[i]->lCount);
-			g_Queue.Enqueue(arr[i]);
-		}
-
-	}
-
-	return 0;
-
-}
+//DWORD WINAPI QueueTestWorker(LPVOID param)
+//{
+//
+//	DWORD id = GetCurrentThreadId();
+//
+//
+//	st_TEST_DATA* arr[dfQueueTest];
+//
+//	while (!close)
+//	{
+//		for (int i = 0; i < dfQueueTest; i++) {
+//
+//			while (!g_Queue.Dequeue(&arr[i]))
+//			{
+//
+//			}
+//
+//			if (arr[i]->lData != 0x0000000055555555)
+//				Crash();
+//			if (arr[i]->lCount != 0)
+//				Crash();
+//			InterlockedIncrement64(&arr[i]->lCount);
+//
+//		}
+//
+//		for (int i = 0; i < dfQueueTest; i++)
+//		{
+//			InterlockedIncrement64(&arr[i]->lData);
+//		}
+//
+//		for (int i = 0; i < dfQueueTest; i++)
+//		{
+//			if (arr[i]->lData != 0x0000000055555556)
+//			{
+//				Crash();
+//			}
+//			if (arr[i]->lCount != 1)
+//			{
+//				Crash();
+//			}
+//		}
+//
+//		Sleep(0);
+//
+//		for (int i = 0; i < dfQueueTest; i++)
+//		{
+//			InterlockedDecrement64(&arr[i]->lData);
+//
+//		}
+//
+//
+//
+//		Sleep(0);
+//
+//		for (int i = 0; i < dfQueueTest; i++)
+//		{
+//			if (arr[i]->lData != 0x0000000055555555)
+//			{
+//				Crash();
+//			}
+//		}
+//		
+//
+//		for (int i = dfQueueTest-1; i >= 0; i--) {
+//			InterlockedDecrement64(&arr[i]->lCount);
+//			//g_Queue.Enqueue(arr[i]);
+//		}
+//
+//	}
+//
+//	return 0;
+//
+//}

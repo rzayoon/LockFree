@@ -29,7 +29,7 @@ class LockFreeQueue
 
 public:
 
-	LockFreeQueue(unsigned int size = 10000, bool placement_new = false);
+	LockFreeQueue(unsigned int size = 10000, bool free_list = true);
 	~LockFreeQueue();
 
 	bool Enqueue(T data);
@@ -43,15 +43,15 @@ private:
 	alignas(64) Node* _head;
 	alignas(64) LONG64 _size;
 	LockFreePool<Node>* _pool;
-	bool _placement_new;
+	bool _free_list;
 };
 
 template<class T>
-inline LockFreeQueue<T>::LockFreeQueue(unsigned int size, bool placement_new)
+inline LockFreeQueue<T>::LockFreeQueue(unsigned int size, bool free_list)
 {
 	_size = 0;
-	_placement_new = placement_new;
-	_pool = new LockFreePool<Node>(size + 1);
+	_free_list = free_list;
+	_pool = new LockFreePool<Node>(size + 1, _free_list);
 	_head = _pool->Alloc();
 
 	_tail = _head;
@@ -67,6 +67,9 @@ template<class T>
 inline bool LockFreeQueue<T>::Enqueue(T data)
 {
 	Node* node = _pool->Alloc();
+	if (node == nullptr)
+		return false;
+
 	unsigned long long old_tail;
 	Node* tail;
 	Node* new_tail;
@@ -81,19 +84,6 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 		old_tail = (unsigned long long)_tail;
 		tail = (Node*)(old_tail & dfADDRESS_MASK);
 		next_cnt = (old_tail >> dfADDRESS_BIT) + 1;
-
-		if (tail == nullptr)
-		{
-			new_tail = (Node*)((unsigned long long)node | (next_cnt << dfADDRESS_BIT));
-			if (InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, old_tail) == old_tail)
-			{
-
-
-
-			}
-			continue;
-
-		}
 
 
 		next = tail->next;

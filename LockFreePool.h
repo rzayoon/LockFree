@@ -44,8 +44,8 @@ public:
 	/// 생성자 
 	/// </summary>
 	/// <param name="block_num"> 초기 블럭 수 </param>
-	/// <param name="placement_new"> Alloc 또는 Free 시 생성자 호출 여부(미구현) </param>
-	LockFreePool(int block_num);
+	/// <param name="free_list"> capacity 추가 여부 </param>
+	LockFreePool(int _block_num, bool _free_list = true);
 
 	virtual ~LockFreePool();
 
@@ -97,12 +97,12 @@ protected:
 #endif
 	alignas(64) unsigned int use_count;
 	alignas(64) unsigned int capacity;
-	alignas(64) char b;
+	alignas(64) bool free_list;
 
 };
 
 template<class DATA>
-LockFreePool<DATA>::LockFreePool(int _capacity)
+LockFreePool<DATA>::LockFreePool(int _capacity, bool _free_list)
 {
 	SYSTEM_INFO si;
 	GetSystemInfo(&si);
@@ -113,6 +113,7 @@ LockFreePool<DATA>::LockFreePool(int _capacity)
 	}
 
 	capacity = _capacity;
+	free_list = _free_list;
 	use_count = 0;
 
 #ifdef LOCKFREE_DEBUG
@@ -158,7 +159,6 @@ DATA* LockFreePool<DATA>::Alloc()
 	BLOCK_NODE* old_top_addr; // 실제 주소
 	BLOCK_NODE* next; // 다음 top
 	BLOCK_NODE* new_top;
-	InterlockedIncrement((LONG*)&use_count);
 
 	
 
@@ -169,17 +169,24 @@ DATA* LockFreePool<DATA>::Alloc()
 
 		if (old_top_addr == nullptr)
 		{
-			InterlockedIncrement(&capacity);
-			
-			old_top_addr = (BLOCK_NODE*)_aligned_malloc(sizeof(BLOCK_NODE), alignof(BLOCK_NODE));
-			ZeroMemory(&old_top_addr->data, sizeof(DATA));
-#ifdef LOCKFREE_DEBUG
-			old_top_addr->front_pad = PAD;
-			old_top_addr->back_pad = PAD;
-#endif LOCKFREE_DEBUG
-			old_top_addr->next = nullptr;
+			if (free_list)
+			{
+				InterlockedIncrement(&capacity);
 
-			break;
+				old_top_addr = (BLOCK_NODE*)_aligned_malloc(sizeof(BLOCK_NODE), alignof(BLOCK_NODE));
+				ZeroMemory(&old_top_addr->data, sizeof(DATA));
+#ifdef LOCKFREE_DEBUG
+				old_top_addr->front_pad = PAD;
+				old_top_addr->back_pad = PAD;
+#endif LOCKFREE_DEBUG
+				old_top_addr->next = nullptr;
+
+				break;
+			}
+			else
+			{
+				return nullptr;
+			}
 		}
 
 
@@ -196,6 +203,7 @@ DATA* LockFreePool<DATA>::Alloc()
 		}
 	}
 
+	InterlockedIncrement((LONG*)&use_count);
 
 	return &old_top_addr->data;
 	
