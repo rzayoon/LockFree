@@ -10,7 +10,7 @@
 LockFreeStack<int> stack;
 
 #define dfTHREAD 4
-#define dfTHREAD_ALLOC 100
+#define dfTHREAD_ALLOC 1
 #define dfMEMORY_POOL_MAX dfTHREAD * dfTHREAD_ALLOC 
 
 const int NUM_THREAD = 4;
@@ -19,22 +19,28 @@ struct st_TEST_DATA
 {
 	volatile LONG64 lData;
 	volatile LONG64 lCount;
-	LONG64 tt;
+
+	st_TEST_DATA()
+	{
+		lData = 0x0000000055555555;
+		lCount = 0;
+		//printf("생성자 호출!\n");
+	}
+
 };
 
-LockFreePool<st_TEST_DATA> g_MemoryPool(0);
+bool close = false;
 
 //LockFreeQueue<st_TEST_DATA*> g_Queue;
-LockFreeStack<st_TEST_DATA*> g_Stack;
+LockFreeStack<st_TEST_DATA*> g_Stack(10, false);
 
-LockFreeQueue<int*> g_Queue;
+LockFreeQueue<st_TEST_DATA*> g_Queue(dfTHREAD_ALLOC* dfTHREAD, false);
 int g_tps;
 
 DWORD WINAPI QueueTestWorker(LPVOID param);
 
 DWORD WINAPI worker3(LPVOID param);
 
-bool close = false;
 
 DWORD WINAPI Giver(LPVOID param);
 DWORD WINAPI Getter(LPVOID param);
@@ -44,13 +50,19 @@ int main()
 
 	HANDLE thread[dfTHREAD];
 
-	/*for (int i = 0; i < dfTHREAD; i++)
+	for (int i = 0; i < dfTHREAD_ALLOC * dfTHREAD; i++)
 	{
-		thread[i] = CreateThread(NULL, 0, worker3, 0, 0, NULL);
+		g_Queue.Enqueue(new st_TEST_DATA);
+	}
 
-	}*/
-	thread[0] = CreateThread(NULL, 0, Giver, 0, 0, NULL);
-	thread[1] = CreateThread(NULL, 0, Getter, 0, 0, NULL);
+
+	for (int i = 0; i < dfTHREAD; i++)
+	{
+		thread[i] = CreateThread(NULL, 0, QueueTestWorker, 0, 0, NULL);
+
+	}
+	//thread[0] = CreateThread(NULL, 0, Giver, 0, 0, NULL);
+	//thread[1] = CreateThread(NULL, 0, Getter, 0, 0, NULL);
 
 	while (1)
 	{
@@ -66,7 +78,7 @@ int main()
 
 		int tps = InterlockedExchange((LONG*)&g_tps, 0);
 		wprintf(L"Dequeue TPS : %d\n", tps);
-		wprintf(L"Queue Use : %d\n", g_Queue.GetSize());
+		wprintf(L"Queue Use : %lld\n", g_Queue.GetSize());
 	}
 
 
@@ -76,34 +88,111 @@ int main()
 	return 0;
 }
 
-DWORD WINAPI Giver(LPVOID param)
-{
-	while (1)
-	{
-		int* value = new int;
-		g_Queue.Enqueue(value);
+//DWORD WINAPI Giver(LPVOID param)
+//{
+//	while (1)
+//	{
+//		int* value = new int;
+//		g_Queue.Enqueue(value);
+//
+//	}
+//
+//	return 0;
+//}
+//
+//DWORD WINAPI Getter(LPVOID param)
+//{
+//	while (1)
+//	{
+//		int* ret;
+//		if (g_Queue.Dequeue(&ret)) {
+//			delete ret;
+//			g_tps++;
+//		}
+//
+//	}
+//
+//	return 0;
+//}
 
-	}
+//DWORD WINAPI worker3(LPVOID param)
+//{
+//
+//	DWORD id = GetCurrentThreadId();
+//
+//
+//	st_TEST_DATA* arr[dfTHREAD_ALLOC];
+//
+//	while (!close)
+//	{
+//		for (int i = 0; i < dfTHREAD_ALLOC; i++) {
+//
+//			arr[i] = g_MemoryPool.Alloc();
+//
+//			if (arr[i] == nullptr)
+//				Crash();
+//			if (arr[i]->lData != 0x0000000055555555)
+//				Crash();
+//			if (arr[i]->lCount != 0)
+//				Crash();
+//
+//		}
+//		
+//		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+//		{
+//			InterlockedIncrement64(&arr[i]->lData);
+//			InterlockedIncrement64(&arr[i]->lCount);
+//
+//		}
+//		
+//		Sleep(0);
+//
+//		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+//		{
+//			if (arr[i]->lData != 0x0000000055555556)
+//			{
+//				Crash();
+//			}
+//			if (arr[i]->lCount != 1)
+//			{
+//				Crash();
+//			}
+//		}
+//
+//		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+//		{
+//			InterlockedDecrement64(&arr[i]->lData);
+//			InterlockedDecrement64(&arr[i]->lCount);
+//
+//		}
+//
+//
+//		
+//		Sleep(0);
+//
+//		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+//		{
+//			if (arr[i]->lData != 0x0000000055555555)
+//			{
+//				Crash();
+//			}
+//			if (arr[i]->lCount != 0)
+//			{
+//				Crash();
+//			}
+//		}
+//
+//		for (int i = dfTHREAD_ALLOC - 1; i >= 0; i--) {
+//			g_MemoryPool.Free(arr[i]);
+//		}
+//
+//	}
+//
+//	return 0;
+//
+//}
 
-	return 0;
-}
-
-DWORD WINAPI Getter(LPVOID param)
-{
-	while (1)
-	{
-		int* ret;
-		if (g_Queue.Dequeue(&ret)) {
-			delete ret;
-			g_tps++;
-		}
-
-	}
-
-	return 0;
-}
-
-DWORD WINAPI worker3(LPVOID param)
+DWORD WINAPI QueueTestWorker(LPVOID param)
 {
 
 	DWORD id = GetCurrentThreadId();
@@ -115,25 +204,23 @@ DWORD WINAPI worker3(LPVOID param)
 	{
 		for (int i = 0; i < dfTHREAD_ALLOC; i++) {
 
-			arr[i] = g_MemoryPool.Alloc();
+			while (!g_Queue.Dequeue(&arr[i]))
+			{
 
-			if (arr[i] == nullptr)
-				Crash();
+			}
+
 			if (arr[i]->lData != 0x0000000055555555)
 				Crash();
 			if (arr[i]->lCount != 0)
 				Crash();
-
-		}
-		
-		for (int i = 0; i < dfTHREAD_ALLOC; i++)
-		{
-			InterlockedIncrement64(&arr[i]->lData);
 			InterlockedIncrement64(&arr[i]->lCount);
 
 		}
-		
-		Sleep(0);
+
+		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+		{
+			InterlockedIncrement64(&arr[i]->lData);
+		}
 
 		for (int i = 0; i < dfTHREAD_ALLOC; i++)
 		{
@@ -147,15 +234,16 @@ DWORD WINAPI worker3(LPVOID param)
 			}
 		}
 
+		Sleep(0);
+
 		for (int i = 0; i < dfTHREAD_ALLOC; i++)
 		{
 			InterlockedDecrement64(&arr[i]->lData);
-			InterlockedDecrement64(&arr[i]->lCount);
 
 		}
 
 
-		
+
 		Sleep(0);
 
 		for (int i = 0; i < dfTHREAD_ALLOC; i++)
@@ -164,14 +252,12 @@ DWORD WINAPI worker3(LPVOID param)
 			{
 				Crash();
 			}
-			if (arr[i]->lCount != 0)
-			{
-				Crash();
-			}
 		}
+		
 
-		for (int i = dfTHREAD_ALLOC - 1; i >= 0; i--) {
-			g_MemoryPool.Free(arr[i]);
+		for (int i = dfTHREAD_ALLOC -1; i >= 0; i--) {
+			InterlockedDecrement64(&arr[i]->lCount);
+			g_Queue.Enqueue(arr[i]);
 		}
 
 	}
@@ -179,78 +265,3 @@ DWORD WINAPI worker3(LPVOID param)
 	return 0;
 
 }
-
-#define dfQueueTest 3
-//DWORD WINAPI QueueTestWorker(LPVOID param)
-//{
-//
-//	DWORD id = GetCurrentThreadId();
-//
-//
-//	st_TEST_DATA* arr[dfQueueTest];
-//
-//	while (!close)
-//	{
-//		for (int i = 0; i < dfQueueTest; i++) {
-//
-//			while (!g_Queue.Dequeue(&arr[i]))
-//			{
-//
-//			}
-//
-//			if (arr[i]->lData != 0x0000000055555555)
-//				Crash();
-//			if (arr[i]->lCount != 0)
-//				Crash();
-//			InterlockedIncrement64(&arr[i]->lCount);
-//
-//		}
-//
-//		for (int i = 0; i < dfQueueTest; i++)
-//		{
-//			InterlockedIncrement64(&arr[i]->lData);
-//		}
-//
-//		for (int i = 0; i < dfQueueTest; i++)
-//		{
-//			if (arr[i]->lData != 0x0000000055555556)
-//			{
-//				Crash();
-//			}
-//			if (arr[i]->lCount != 1)
-//			{
-//				Crash();
-//			}
-//		}
-//
-//		Sleep(0);
-//
-//		for (int i = 0; i < dfQueueTest; i++)
-//		{
-//			InterlockedDecrement64(&arr[i]->lData);
-//
-//		}
-//
-//
-//
-//		Sleep(0);
-//
-//		for (int i = 0; i < dfQueueTest; i++)
-//		{
-//			if (arr[i]->lData != 0x0000000055555555)
-//			{
-//				Crash();
-//			}
-//		}
-//		
-//
-//		for (int i = dfQueueTest-1; i >= 0; i--) {
-//			InterlockedDecrement64(&arr[i]->lCount);
-//			//g_Queue.Enqueue(arr[i]);
-//		}
-//
-//	}
-//
-//	return 0;
-//
-//}

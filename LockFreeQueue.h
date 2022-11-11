@@ -29,7 +29,7 @@ class LockFreeQueue
 
 public:
 
-	LockFreeQueue(unsigned int size = 10000, bool free_list = true);
+	LockFreeQueue(unsigned int capacity = 10000, bool freeList = true);
 	~LockFreeQueue();
 
 	bool Enqueue(T data);
@@ -43,15 +43,15 @@ private:
 	alignas(64) Node* _head;
 	alignas(64) LONG64 _size;
 	LockFreePool<Node>* _pool;
-	bool _free_list;
+	bool _freeList;
 };
 
 template<class T>
-inline LockFreeQueue<T>::LockFreeQueue(unsigned int size, bool free_list)
+inline LockFreeQueue<T>::LockFreeQueue(unsigned int capacity, bool free_list)
 {
 	_size = 0;
-	_free_list = free_list;
-	_pool = new LockFreePool<Node>(size + 1, _free_list);
+	_freeList = free_list;
+	_pool = new LockFreePool<Node>(capacity + 1, _freeList);
 	_head = _pool->Alloc();
 
 	_tail = _head;
