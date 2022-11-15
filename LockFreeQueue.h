@@ -52,7 +52,9 @@ inline LockFreeQueue<T>::LockFreeQueue(unsigned int capacity, bool free_list)
 	_size = 0;
 	_freeList = free_list;
 	_pool = new LockFreePool<Node>(capacity + 1, _freeList);
-	_head = _pool->Alloc();
+	Node* dummy = _pool->Alloc();
+	dummy->next = nullptr;
+	_head = dummy;
 
 	_tail = _head;
 }
