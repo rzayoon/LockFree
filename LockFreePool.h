@@ -34,7 +34,7 @@ class LockFreePool
 		unsigned long long back_pad;
 #endif
 		BLOCK_NODE* next;
-	
+
 
 		BLOCK_NODE()
 		{
@@ -142,8 +142,7 @@ LockFreePool<DATA>::LockFreePool(int capacity, bool freeList)
 template<class DATA>
 LockFreePool<DATA>::~LockFreePool()
 {
-	// 반환 안된 노드는 포기.. 어차피 전역에 놓고 쓸거라 
-	// 소멸 시점은 프로그램 종료 때
+	// todo : 블럭 생성시 따로 리스트에 보관해서 삭제하기
 	BLOCK_NODE* top_addr = (BLOCK_NODE*)((unsigned long long)top & dfADDRESS_MASK);
 	BLOCK_NODE* temp;
 
@@ -164,7 +163,7 @@ DATA* LockFreePool<DATA>::Alloc()
 	BLOCK_NODE* next; // 다음 top
 	BLOCK_NODE* new_top;
 
-	
+
 
 	while (1)
 	{
@@ -178,7 +177,7 @@ DATA* LockFreePool<DATA>::Alloc()
 				InterlockedIncrement(&_capacity);
 
 				old_top_addr = (BLOCK_NODE*)_aligned_malloc(sizeof(BLOCK_NODE), alignof(BLOCK_NODE));
-	
+
 #ifdef LOCKFREE_DEBUG
 				old_top_addr->front_pad = PAD;
 				old_top_addr->back_pad = PAD;
@@ -202,7 +201,7 @@ DATA* LockFreePool<DATA>::Alloc()
 
 		if (old_top == (unsigned long long)InterlockedCompareExchangePointer((PVOID*)&top, (PVOID)new_top, (PVOID)old_top))
 		{
-			
+
 			break;
 		}
 	}
@@ -210,7 +209,7 @@ DATA* LockFreePool<DATA>::Alloc()
 	InterlockedIncrement((LONG*)&_useCount);
 
 	return &old_top_addr->data;
-	
+
 }
 
 template<class DATA>
@@ -220,7 +219,7 @@ bool LockFreePool<DATA>::Free(DATA* data)
 
 #ifdef LOCKFREE_DEBUG
 	// data가 8바이트 초과하면 문제될 수 있음 구조체 패딩 관련
-	BLOCK_NODE* node = (BLOCK_NODE*)((char*)data - padding_size); 
+	BLOCK_NODE* node = (BLOCK_NODE*)((char*)data - padding_size);
 	if (node->front_pad != PAD || node->back_pad != PAD) // 사용 중에 버퍼 오버런 있었는지 체크용
 	{
 		Crash();
@@ -249,6 +248,6 @@ bool LockFreePool<DATA>::Free(DATA* data)
 			break;
 		}
 	}
-	
+
 	return true;
 }

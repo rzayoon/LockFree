@@ -35,7 +35,7 @@ bool close = false;
 //LockFreeQueue<st_TEST_DATA*> g_Queue;
 LockFreeStack<st_TEST_DATA*> g_Stack(10, false);
 
-LockFreeQueue<st_TEST_DATA*> g_Queue(dfTHREAD_ALLOC* dfTHREAD, false);
+LockFreeQueue<st_TEST_DATA*> g_Queue(1, true);
 int g_tps;
 
 DWORD WINAPI QueueTestWorker(LPVOID param);
@@ -50,12 +50,6 @@ int main()
 {
 
 	HANDLE thread[dfTHREAD];
-
-	for (int i = 0; i < dfTHREAD_ALLOC * dfTHREAD; i++)
-	{
-		g_Queue.Enqueue(new st_TEST_DATA);
-	}
-
 
 	for (int i = 0; i < dfTHREAD; i++)
 	{
@@ -198,18 +192,17 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 	DWORD id = GetCurrentThreadId();
 
+	int cnt = 0;
+	st_TEST_DATA* arr[5000];
 
-	st_TEST_DATA* arr[dfTHREAD_ALLOC];
-
-	while (!close)
+	while (cnt < 5000)
 	{
-		for (int i = 0; i < dfTHREAD_ALLOC; i++) {
+		for (int i = 0; i < cnt; i++) {
 
 			while (!g_Queue.Dequeue(&arr[i]))
 			{
 
 			}
-
 			if (arr[i]->lData != 0x0000000055555555)
 				Crash();
 			if (arr[i]->lCount != 0)
@@ -218,12 +211,15 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 		}
 
-		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+		arr[cnt] = new st_TEST_DATA;
+		InterlockedIncrement64(&arr[cnt]->lCount);
+
+		for (int i = 0; i <= cnt; i++)
 		{
 			InterlockedIncrement64(&arr[i]->lData);
 		}
 
-		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+		for (int i = 0; i <= cnt; i++)
 		{
 			if (arr[i]->lData != 0x0000000055555556)
 			{
@@ -237,7 +233,7 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 		Sleep(0);
 
-		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+		for (int i = 0; i <= cnt; i++)
 		{
 			InterlockedDecrement64(&arr[i]->lData);
 
@@ -247,7 +243,7 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 		Sleep(0);
 
-		for (int i = 0; i < dfTHREAD_ALLOC; i++)
+		for (int i = 0; i <= cnt; i++)
 		{
 			if (arr[i]->lData != 0x0000000055555555)
 			{
@@ -256,11 +252,12 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 		}
 		
 
-		for (int i = dfTHREAD_ALLOC -1; i >= 0; i--) {
+		for (int i = cnt; i >= 0; i--) {
 			InterlockedDecrement64(&arr[i]->lCount);
 			g_Queue.Enqueue(arr[i]);
 		}
 
+		cnt++;
 	}
 
 	return 0;

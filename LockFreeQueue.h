@@ -11,13 +11,11 @@ class LockFreeQueue
 	{
 		T data;
 		Node* next;
-		int del_cnt;
 
 		Node()
 		{
 
 			next = nullptr;
-			del_cnt = 0;
 		}
 
 		~Node()
@@ -110,7 +108,7 @@ inline bool LockFreeQueue<T>::Enqueue(T data)
 			InterlockedCompareExchangePointer((PVOID*)&_tail, new_tail, (PVOID)old_tail);
 
 		}
-		
+
 	}
 	InterlockedIncrement64(&_size);
 
