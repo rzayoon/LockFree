@@ -126,6 +126,7 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 
 	while (true)
 	{
+		
 		old_head = (unsigned long long)_head;
 		head = (Node*)(old_head & dfADDRESS_MASK);
 		next_cnt = (old_head >> dfADDRESS_BIT) + 1;
@@ -142,6 +143,7 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			// 정말 없었으면 안들어왔어야 함.
 			// 그럼에도 원인이 될 수 있는 상황
 			// 1. 지금 보고 있는 head가 다른 스레드에서 dequeue되었고 다시 enque과정에서 next가 null로 쓰여졌다.
+			//    -> head가 바뀌었을 것이므로 다시 하면 됨.
 			// 2. 한 스레드가 enque에서 노드 하나를 tail로 저장하고 잠시 안돌았음
 			//    -> 해당 노드가 queue에서 빠져나감 -> 다시 enqueue에서 next = null 됨
 			//    -> 멈춰있던 스레드가 동작하면서 next에 이어버림 -> 사이즈 증가
@@ -150,6 +152,7 @@ inline bool LockFreeQueue<T>::Dequeue(T* data)
 			//    이 문제는 enqueue 중인 스레드가 일을 마치면 해결이 된다.
 			//    하지만 다른 스레드 때문에 해야할 일을 못하는 것은 락프리의 목적에 위배된다.
 			//    next가 null로 읽히면 1, 2의 상황 구분하지 않고 그냥 없는 것으로 본다..
+			*data = nullptr;
 			InterlockedIncrement64(&_size);
 			return false;
 		}
