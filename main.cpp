@@ -193,11 +193,11 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 	DWORD id = GetCurrentThreadId();
 
 	int cnt = 0;
-	st_TEST_DATA* arr[5000];
+	st_TEST_DATA* arr[dfTHREAD_ALLOC];
 
-	while (cnt < 5000)
+	while (1)
 	{
-		for (int i = 0; i < cnt; i++) {
+		for (int i = 0; i < dfTHREAD_ALLOC; i++) {
 
 			while (!g_Queue.Dequeue(&arr[i]))
 			{
@@ -211,15 +211,14 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 		}
 
-		arr[cnt] = new st_TEST_DATA;
-		InterlockedIncrement64(&arr[cnt]->lCount);
+		Sleep(0);
 
-		for (int i = 0; i <= cnt; i++)
+		for (int i = 0; i <= dfTHREAD_ALLOC; i++)
 		{
 			InterlockedIncrement64(&arr[i]->lData);
 		}
 
-		for (int i = 0; i <= cnt; i++)
+		for (int i = 0; i <= dfTHREAD_ALLOC; i++)
 		{
 			if (arr[i]->lData != 0x0000000055555556)
 			{
@@ -233,7 +232,7 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 		Sleep(0);
 
-		for (int i = 0; i <= cnt; i++)
+		for (int i = 0; i <= dfTHREAD_ALLOC; i++)
 		{
 			InterlockedDecrement64(&arr[i]->lData);
 
@@ -243,7 +242,7 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 
 		Sleep(0);
 
-		for (int i = 0; i <= cnt; i++)
+		for (int i = 0; i <= dfTHREAD_ALLOC; i++)
 		{
 			if (arr[i]->lData != 0x0000000055555555)
 			{
@@ -252,7 +251,7 @@ DWORD WINAPI QueueTestWorker(LPVOID param)
 		}
 		
 
-		for (int i = cnt; i >= 0; i--) {
+		for (int i = dfTHREAD_ALLOC - 1; i >= 0; i--) {
 			InterlockedDecrement64(&arr[i]->lCount);
 			g_Queue.Enqueue(arr[i]);
 		}
