@@ -158,6 +158,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ProfileTls.cpp" />
+    <ClCompile Include="Queue.h" />
+    <ClCompile Include="TextParser.cpp" />
     <ClCompile Include="Tracer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -165,6 +168,10 @@
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeStack.h" />
     <ClInclude Include="MemoryPoolTls.h" />
+    <ClInclude Include="ProfileTls.h" />
+    <ClInclude Include="SpinLock.h" />
+    <ClInclude Include="Stack.h" />
+    <ClInclude Include="TextParser.h" />
     <ClInclude Include="Tracer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,0 +1,17 @@
+{
+
+
+
+
+
+
+
+
+
+	code = 0
+	num = 2
+	thread_alloc = 100
+	Interrupter = 0
+
+
+}
